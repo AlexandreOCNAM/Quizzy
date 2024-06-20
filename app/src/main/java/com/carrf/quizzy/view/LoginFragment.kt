@@ -18,7 +18,6 @@ import com.carrf.quizzy.data.entities.User
 class LoginFragment : Fragment() {
 
     private lateinit var db: AppDatabase
-    private lateinit var sharedPreferences: SharedPreferences
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -31,18 +30,39 @@ class LoginFragment : Fragment() {
             AppDatabase::class.java, "quiz-db"
         ).allowMainThreadQueries().build()
 
-        sharedPreferences = requireActivity().getSharedPreferences("QuizAppPrefs", Context.MODE_PRIVATE)
+        // Ajouter quelques utilisateurs de test
+        if (db.userDao().getUserByUsernameAndPassword("test", "test") == null) {
+            db.userDao().insert(User(username = "test", password = "test"))
+        }
+
+        // Ajouter quelques quiz de test sur la Formule 1
+        if (db.quizDao().getAllQuizzes().isEmpty()) {
+            val f1Quiz1 = Quiz(quizId = 0, title = "Formula 1 Basics")
+            val f1Quiz1Id = db.quizDao().insert(f1Quiz1).toInt()
+
+            db.quizDao().insertAll(
+    Question(questionId = 0, quizId = f1Quiz1Id, text = "Who won the F1 World Championship in 2021?", option1 = "Lewis Hamilton", option2 = "Max Verstappen", correctAnswer = "Max Verstappen"),
+    Question(questionId = 1, quizId = f1Quiz1Id, text = "What is the highest class of single-seater auto racing sanctioned by the FIA?", option1 = "Formula 1", option2 = "Formula 2", correctAnswer = "Formula 1"),
+    Question(questionId = 2, quizId = f1Quiz1Id, text = "How many teams compete in the 2023 Formula 1 season?", option1 = "10", option2 = "12", correctAnswer = "10"),
+    Question(questionId = 3, quizId = f1Quiz1Id, text = "Which country hosts the Monaco Grand Prix?", option1 = "France", option2 = "Monaco", correctAnswer = "Monaco")
+)
+
+val f1Quiz2 = Quiz(quizId = 1, title = "F1 Circuits and Rules")
+val f1Quiz2Id = db.quizDao().insert(f1Quiz2).toInt()
+
+db.quizDao().insertAll(
+    Question(questionId = 4, quizId = f1Quiz2Id, text = "Which circuit hosts the British Grand Prix?", option1 = "Silverstone", option2 = "Brands Hatch", correctAnswer = "Silverstone"),
+    Question(questionId = 5, quizId = f1Quiz2Id, text = "What color flag indicates the end of a session?", option1 = "Yellow", option2 = "Checkered", correctAnswer = "Checkered"),
+    Question(questionId = 6, quizId = f1Quiz2Id, text = "How many laps are there in the Monaco Grand Prix?", option1 = "78", option2 = "60", correctAnswer = "78"),
+    Question(questionId = 7, quizId = f1Quiz2Id, text = "Which tire color indicates the softest compound?", option1 = "Red", option2 = "White", correctAnswer = "Red")
+)
+        }
+
 
         val usernameEditText: EditText = view.findViewById(R.id.username)
         val passwordEditText: EditText = view.findViewById(R.id.password)
         val loginButton: Button = view.findViewById(R.id.login_button)
         val quizzesList: ListView = view.findViewById(R.id.quizzes_list)
-
-        val currentUser = getCurrentUser()
-        if (currentUser != null) {
-            quizzesList.visibility = View.VISIBLE
-            loadQuizzes(quizzesList)
-        }
 
         loginButton.setOnClickListener {
             val username = usernameEditText.text.toString()
@@ -51,7 +71,6 @@ class LoginFragment : Fragment() {
             val user = db.userDao().getUserByUsernameAndPassword(username, password)
             if (user != null) {
                 Toast.makeText(context, "Login Successful", Toast.LENGTH_SHORT).show()
-                saveCurrentUser(user)
                 quizzesList.visibility = View.VISIBLE
                 loadQuizzes(quizzesList)
             } else {
@@ -80,21 +99,6 @@ class LoginFragment : Fragment() {
                 .replace(R.id.fragment_container, fragment)
                 .addToBackStack(null)
                 .commit()
-        }
-    }
-
-    private fun saveCurrentUser(user: User) {
-        val editor = sharedPreferences.edit()
-        editor.putInt("USER_ID", user.userId)
-        editor.apply()
-    }
-
-    private fun getCurrentUser(): User? {
-        val userId = sharedPreferences.getInt("USER_ID", -1)
-        return if (userId != -1) {
-            db.userDao().getUserById(userId)
-        } else {
-            null
         }
     }
 }
